@@ -1,0 +1,33 @@
+WITH sum_name AS (SELECT name, 
+       sum(quantity) AS full_quantity,
+       sum(revenue) AS full_revenue
+FROM pizza_sales
+WHERE YEAR = 2015
+GROUP BY name),
+SHARE as (SELECT name, full_quantity, full_revenue,
+ sum(full_quantity) OVER (ORDER BY full_quantity DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cumulativ_quan,
+  sum(full_revenue) OVER (ORDER BY full_revenue DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cumulativ_rev,
+       sum(full_quantity) OVER (ORDER BY full_quantity desc) / sum(full_quantity) OVER () AS quan_share,
+       sum(full_revenue) OVER (ORDER BY full_revenue desc) / sum(full_revenue) OVER () AS rev_share
+       FROM sum_name),
+ABC_classified AS (SELECT name, full_quantity, cumulativ_quan, full_revenue, cumulativ_rev, quan_share, rev_share,
+	concat(CASE
+    WHEN quan_share  <= 0.8 THEN 'A'
+    WHEN quan_share  <= 0.95 THEN 'B'
+    ELSE 'C'
+	END,
+	CASE
+	WHEN rev_share <= 0.8 THEN 'A'
+	WHEN rev_share <= 0.95 THEN 'B'
+	ELSE 'C'
+	END) AS ABC_units_revenue
+FROM SHARE 
+  ORDER BY full_quantity DESC)
+  SELECT ABC_units_revenue,
+         count(*) AS cnt_of_pizzas,
+         sum(full_quantity) AS total_quantity,
+         sum(full_revenue) AS total_revenue
+  FROM ABC_classified
+  GROUP BY ABC_units_revenue
+  ORDER BY ABC_units_revenue
+  	
