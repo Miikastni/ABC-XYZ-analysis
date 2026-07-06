@@ -29,5 +29,27 @@ FROM SHARE
          sum(full_revenue) AS total_revenue
   FROM ABC_classified
   GROUP BY ABC_units_revenue
-  ORDER BY ABC_units_revenue
+  ORDER BY ABC_units_revenue;
+
+WITH month_quantity AS (SELECT name, to_date(month_year, 'DD.MM.YYYY') AS sale_month,
+                     sum(quantity) as full_quantity
+                     FROM pizza_sales
+                     WHERE YEAR = 2015
+                     GROUP BY name, to_date(month_year, 'DD.MM.YYYY')
+                     ORDER BY name, sale_month),
+variation_calculation AS (SELECT name,
+       stddev_pop(full_quantity) AS standard_deviation,
+       avg(full_quantity) AS avg_quantity,
+       round(stddev_pop(full_quantity) / avg(full_quantity), 5) AS variation_coeff
+FROM month_quantity
+GROUP BY name)
+SELECT name,
+	   variation_coeff,
+	   CASE
+	   	WHEN variation_coeff <= 0.1 THEN 'X'
+	   	WHEN variation_coeff <= 0.12 THEN 'Y'
+	   	ELSE 'Z'
+	   END AS XYZ_category
+FROM variation_calculation
+ORDER BY XYZ_category, name
   	
